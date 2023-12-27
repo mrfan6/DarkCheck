@@ -12,29 +12,49 @@ def clear_darkresult():#每次执行darkresult.txt"文件都会清空，不想�
         os.remove("darkresult.txt")
 def banner():
     print('+------------------------暗链检测工具----------------------------------------------------+')
-    print('python Dark_chain_check.py -u/urls.txt -f/--file')
+    print('python Dark_chain_check.py -u/--url -f/--filename')
     print('+---------------------------------------------------------------------------------------+')
+
+def probe_url(domain):
+    try:
+        # 尝试使用https协议
+        response = requests.get(f'https://{domain}', timeout=5)
+        if response:
+            return f'https://{domain}'
+    except requests.RequestException:
+        try:
+            # 尝试使用http协议
+            response = requests.get(f'http://{domain}', timeout=5)
+            if response:
+                return f'http://{domain}'
+        except requests.RequestException:
+            return domain
+    return domain
 
 def FindDarkchain(urls):
     for url in urls:
         try:
             if "http" not in url:
-                url = "http://" + url
-            res=requests.get(url,headers=headers,timeout=10,verify=False).text
-            respose=html.unescape(res)
-            rules = []#匹配到的标签
-            host=True
-            for re_rules in re_rules_list:
-                chashuibiao=re.findall(r'{}'.format(re_rules),respose,re.S|re.I)
-                if chashuibiao !=[]:
-                    rules.append(re_rules)
-                    host=False
-                    print('{}:{} 存在暗链，命中规则--->{}'.format(threading.current_thread().name,url,chashuibiao))
-            if host ==False:
-                with open("darkresult.txt", "a+") as file1:
-                    file1.write('{}\n'.format(url))
+                # url = "http://" + url
+                url = probe_url(url)
+            if "http" not in url:
+                print('{} 请求出错'.format(url))
             else:
-                print('{}:{} 未检测出暗链，未命中规则'.format(threading.current_thread().name,url))
+                res=requests.get(url,headers=headers,timeout=10,verify=False).text
+                respose=html.unescape(res)
+                rules = []#匹配到的标签
+                host=True
+                for re_rules in re_rules_list:
+                    chashuibiao=re.findall(r'{}'.format(re_rules),respose,re.S|re.I)
+                    if chashuibiao !=[]:
+                        rules.append(re_rules)
+                        host=False
+                        print('{}:{} 存在暗链，命中规则--->{}'.format(threading.current_thread().name,url,chashuibiao))
+                if host ==False:
+                    with open("darkresult.txt", "a+") as file1:
+                        file1.write('{}\n'.format(url))
+                else:
+                    print('{}:{} 未检测出暗链，未命中规则'.format(threading.current_thread().name,url))
         except:
             print('{}:{}请求出错'.format(threading.current_thread().name,url))
 
@@ -71,25 +91,29 @@ if __name__ == '__main__':
         try:
             clear_darkresult()
             if "http" not in url:
-                url = "http://" + url
-            res=requests.get(url,headers=headers,timeout=10,verify=False).text
-            respose=html.unescape(res)
-            rules = []#匹配到的标签
-            host=True
-            for re_rules in re_rules_list:
-                chashuibiao=re.findall(r'{}'.format(re_rules),respose,re.S|re.I)
-                if chashuibiao !=[]:
-                    rules.append(re_rules)
-                    host=False
-                    print('{} 存在暗链，命中规则--->{}'.format(url,chashuibiao))
-            if host ==False:
-                with open("darkresult.txt", "a+") as file1:
-                    file1.write('{}\n'.format(url))
-                print("存在暗链的url放置在darkresult.txt文件中")
+                # url = "http://" + url
+                url = probe_url(url)
+            if "http" not in url:
+                print('{} 请求出错'.format(url))
             else:
-                print('{} 未检测出暗链，未命中规则'.format(url))
+                res=requests.get(url,headers=headers,timeout=10,verify=False).text
+                respose=html.unescape(res)
+                rules = []#匹配到的标签
+                host=True
+                for re_rules in re_rules_list:
+                    chashuibiao=re.findall(r'{}'.format(re_rules),respose,re.S|re.I)
+                    if chashuibiao !=[]:
+                        rules.append(re_rules)
+                        host=False
+                        print('{} 存在暗链，命中规则--->{}'.format(url,chashuibiao))
+                if host ==False:
+                    with open("darkresult.txt", "a+") as file1:
+                        file1.write('{}\n'.format(url))
+                    print("存在暗链的url放置在darkresult.txt文件中")
+                else:
+                    print('{} 未检测出暗链，未命中规则'.format(url))
         except:
-            print('{}请求出错'.format(url))
+            print('{} 请求出错'.format(url))
     elif filename!="" and url== "":
         print(f"正在检测{filename}中的站点")
         clear_darkresult()
