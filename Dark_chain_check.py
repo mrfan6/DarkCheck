@@ -60,7 +60,7 @@ def FindDarkchain(urls):
 
 def openDarkurlcheck(filename):
     xc = 4 # 设置线程数
-    with open(filename, 'r') as f:
+    with open(filename, 'r',encoding='utf-8') as f:
         urls_list = f.read().split('\n')
     urls = []
     twoList = [[] for i in range(xc)]
