@@ -1,5 +1,7 @@
 # 暗链检测
 
+**原作者：https://github.com/pp00001/dc_find**
+
 # 使用方法
 
 ### 单独检测-u
