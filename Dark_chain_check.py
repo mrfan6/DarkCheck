@@ -28,7 +28,6 @@ def probe_url(domain):
             if response.status_code == 200 or response.status_code == 403:
                 return f'http://{domain}'
         except requests.RequestException:
-            print("HTTP错误")
             return domain
     return domain
 
