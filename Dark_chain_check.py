@@ -18,16 +18,17 @@ def banner():
 def probe_url(domain):
     try:
         # 尝试使用https协议
-        response = requests.get(f'https://{domain}', timeout=5)
-        if response:
+        response = requests.get(f'https://{domain}', timeout=5, verify=False)
+        if response.status_code == 200 or response.status_code == 403:
             return f'https://{domain}'
     except requests.RequestException:
         try:
             # 尝试使用http协议
-            response = requests.get(f'http://{domain}', timeout=5)
-            if response:
+            response = requests.get(f'http://{domain}', timeout=5, verify=False)
+            if response.status_code == 200 or response.status_code == 403:
                 return f'http://{domain}'
         except requests.RequestException:
+            print("HTTP错误")
             return domain
     return domain
 
