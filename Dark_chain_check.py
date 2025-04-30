@@ -8,6 +8,7 @@ import requests
 import urllib3
 import csv
 from datetime import datetime
+from urllib.parse import urlparse  # Python 3标准导入方式
 
 # 禁用不安全请求的警告
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -46,23 +47,44 @@ def normalize_url(url):
         url = 'http://' + url  # 默认使用http
     return url
 
-def probe_url(domain):
-    """ 尝试获取可用的URL """
-    if "http" not in domain:
-        for scheme in ['https', 'http']:
-            try:
-                response = requests.get(f'{scheme}://{domain}', timeout=15, verify=False, headers=headers, proxies=proxies)
-                if response.status_code in [200, 403, 404]:
-                    return f'{scheme}://{domain}'
-            except requests.RequestException as e:
-                print(f'尝试访问 {scheme}://{domain} 时出错: {str(e)}')
-    else:
+def probe_url(domain, timeout=10):
+    """增强版协议探测函数，支持自动回退协议并优化异常处理"""
+    # 解析原始域名（去除已有协议）
+    parsed = urlparse(domain)
+    host = parsed.netloc or domain  # 处理无协议输入（如www.example.com）
+    
+    # 定义协议尝试顺序（优先HTTPS）
+    for scheme in ['https', 'http']:
         try:
-            response = requests.get(f'{domain}', timeout=15, verify=False, headers=headers, proxies=proxies)
+            # 构造完整URL
+            test_url = f"{scheme}://{host}"
+            
+            # 发送探测请求（增强超时和重试机制）
+            response = requests.get(
+                test_url,
+                timeout=timeout,
+                verify=False,
+                headers=headers,
+                proxies=proxies,
+                allow_redirects=False  # 防止重定向干扰探测
+            )
+            
+            # 验证有效响应码
             if response.status_code in [200, 403, 404]:
-                return f'{domain}'
-        except requests.RequestException as e:
-            print(f'尝试访问 {domain} 时出错: {str(e)}')
+                print(f"[PROBE] 成功探测到可用协议: {scheme.upper()}")
+                return test_url
+            
+        except requests.exceptions.RequestException as e:
+            # 分类处理不同异常类型
+            if isinstance(e, requests.exceptions.ConnectionError):
+                print(f"[DNS/CONN] {scheme}://{host} 连接失败: {str(e)}")
+            elif isinstance(e, requests.exceptions.Timeout):
+                print(f"[TIMEOUT] {scheme}::{host} 请求超时")
+            else:
+                print(f"[HTTP_ERR] {scheme}://{host} 协议错误: {str(e)}")
+            continue
+    
+    print(f"[FAILED] 所有协议探测均失败: {domain}")
     return None
 
 def find_darkchain(url):
@@ -77,7 +99,7 @@ def find_darkchain(url):
             return
 
         # 获取页面内容
-        res = requests.get(final_url, headers=headers, timeout=15, verify=False, proxies=proxies).text
+        res = requests.get(final_url, headers=headers, timeout=30, verify=False, proxies=proxies).text
         respose = html.unescape(res)
 
         matched_rules = []  # 存储匹配到的规则
@@ -111,7 +133,8 @@ def save_results_to_files():
 
     # 生成 CSV 文件，使用时间戳 + 后缀名
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    csv_filename = f"{timestamp}_darkchain_results.csv"
+    #csv_filename = f"{timestamp}_darkchain_results.csv"
+    csv_filename = f"_darkchain_results.csv"
 
     with open(csv_filename, 'w', newline='', encoding='utf-8') as csvfile:
         csv_writer = csv.writer(csvfile)
